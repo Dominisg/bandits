@@ -11,8 +11,8 @@ parser.add_argument('policy', type=str,
                     choices=['random', 'epsilon_greedy', 'lin_ucb', 'neural_ucb', 'bayes_by_backprob'], 
                     help='Policy')
 parser.add_argument('config', type=str, help='Policy config')
-parser.add_argument('offline', type=str, optional=True)
-parser.add_argument('offline_method', type=str, choices=['dm', 'ips', 'dr'], default='dm', optional=True)
+parser.add_argument('--offline', type=str, default="")
+parser.add_argument('--offline_method', type=str, choices=['dm', 'ips', 'dr'], default='dm')
 args = parser.parse_args()
 
 with open(args.config, "r") as stream:
@@ -26,6 +26,8 @@ policy = get_policy(args.policy, bandit.arms_count(), bandit.context_size(), con
 
 if not args.offline:
     logger = get_logger("wandb", policy.get_name())
+    config['policy'] = args.policy
+    logger.log_config(config)
     history = HistoryLogger(policy.get_name())
     
     regret_sum = 0
@@ -39,7 +41,10 @@ if not args.offline:
         history.log(context, action, reward)
 else:
     offline_bandit = get_offline_bandit(args.offline)
-    logger = get_logger("dummy", args.policy + " " + args.offline, project_name='offline_bandits')
+    logger = get_logger("wandb", args.policy + " " + args.offline, project_name='offline_bandits')
+    config['policy'] = args.policy
+    config['offline_method'] = args.offline_method
+    logger.log_config(config)
 
     for step in range(len(offline_bandit)):
         context = offline_bandit.get_context(1)
@@ -48,7 +53,7 @@ else:
         policy.update(context, action, reward)
         logger.log({ "reward": reward })
 
-        if step % 1000 == 0:
+        if step % 250 == 0:
             eval_regret = 0
             for _ in range(len(bandit)):
                 context = bandit.get_context(1)
