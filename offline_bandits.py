@@ -3,15 +3,13 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from bandits import Bandit
 
-def get_offline_bandit(method):
+def get_offline_bandit(method, log):
     if method == 'dm':
-        return DirectOfflineBandit()
+        return DirectOfflineBandit(log)
     if method == 'ips':
-        return InversePropensityScoreOfflineBandit()
+        return InversePropensityScoreOfflineBandit(log)
     if method == 'dr':
-        DoublyRobustOfflineBandit()
-    return None
-
+        return DoublyRobustOfflineBandit(log)
 
 class DirectOfflineBandit(Bandit):
     def __init__(self, log):

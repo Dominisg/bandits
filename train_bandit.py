@@ -40,7 +40,7 @@ if not args.offline:
         logger.log({ "reward": reward, "regret": regret_sum })
         history.log(context, action, reward)
 else:
-    offline_bandit = get_offline_bandit(args.offline)
+    offline_bandit = get_offline_bandit(args.offline_method, args.offline)
     logger = get_logger("wandb", args.policy + " " + args.offline, project_name='offline_bandits')
     config['policy'] = args.policy
     config['offline_method'] = args.offline_method

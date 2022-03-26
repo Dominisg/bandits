@@ -63,11 +63,11 @@ class DummyLogger(Logger):
 class HistoryLogger:
     def __init__(self, run_name):
         now = datetime.now() # current date and time
-        self.filename = run_name + "_" + now.strftime("%m-%d-%Y_%H:%M:%S.csv")
+        self.filename = 'history/' + run_name + "_" + now.strftime("%m-%d-%Y_%H:%M:%S.csv")
     
     def log(self, context, action, reward):
         mode = 'a' if os.path.exists(self.filename) else 'w'
-        with open('history/' + self.filename, mode) as f:
+        with open(self.filename, mode) as f:
             if mode == 'w':
                 for i in range(len(context[0])):
                     f.write(f"ctx{i},")
