@@ -28,10 +28,10 @@ if not args.offline:
     logger = get_logger("wandb", policy.get_name())
     config['policy'] = args.policy
     logger.log_config(config)
-    history = HistoryLogger(policy.get_name())
+    history = HistoryLogger(policy.get_name(), args.dataset)
     
     regret_sum = 0
-    for _ in range(50000):
+    for _ in range(max(50000, len(bandit))):
         context = bandit.get_context(1)
         action = policy.get_action(context)
         reward, regret = bandit.pull_arm(action)
@@ -48,6 +48,7 @@ else:
 
     for step in range(len(offline_bandit)):
         context = offline_bandit.get_context(1)
+        (context)
         action = policy.get_action(context)
         reward = offline_bandit.pull_arm(action)
         policy.update(context, action, reward)

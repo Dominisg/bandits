@@ -61,9 +61,9 @@ class DummyLogger(Logger):
         print(dict)
  
 class HistoryLogger:
-    def __init__(self, run_name):
+    def __init__(self, run_name, dataset):
         now = datetime.now() # current date and time
-        self.filename = 'history/' + run_name + "_" + now.strftime("%m-%d-%Y_%H:%M:%S.csv")
+        self.filename = 'history/' + dataset + '/' + run_name + "_" + now.strftime("%m-%d-%Y_%H:%M:%S.csv")
     
     def log(self, context, action, reward):
         mode = 'a' if os.path.exists(self.filename) else 'w'

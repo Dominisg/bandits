@@ -1,8 +1,0 @@
-epsilon: 0.0
-learning_rate: 0.001
-lr_gamma: 0.9
-batch_size: 64
-weight_decay: 0.00001
-hidden_size: 100
-bayes: True
-kl_weight: 0.001

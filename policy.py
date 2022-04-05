@@ -25,6 +25,16 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield np.array(lst[i:i + n])
 
+def chunks2(lst1, lst2, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst1), n):
+        yield lst1[i:i + n], lst2[i:i + n]
+
+def chunks3(lst1, lst2, lst3, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst1), n):
+        yield lst1[i:i + n], lst2[i:i + n], lst3[i:i + n]
+
 class Perceptron(torch.nn.Module):
     def __init__(self, input_size, hidden_size):
         super(Perceptron, self).__init__()
@@ -120,6 +130,29 @@ class EpsilonPerceptron():
             self.scheduler.step()
 
         return
+
+    def pretrain(self, history, logger):
+        self.model.train()
+        bs = self.batch_size
+        for k, v in history.items():
+            history[k] = torch.from_numpy(v).float()
+
+        for _ in range(self.epochs):
+            for context, action, reward in chunks3(history['context'], history['action'], history['reward'], bs):
+                self.optimizer.zero_grad()
+                batch_context = torch.cat([context, action], 1) 
+                pred = self.model(batch_context)
+                loss = self.criterion(pred.squeeze(), reward)
+                if self.kl_loss is not None:
+                    kl = self.kl_loss(self.model)
+                    loss = loss + self.kl_weight*kl
+
+                logger.log({"train/loss" : loss})
+                loss.backward()
+                self.optimizer.step()
+            self.scheduler.step()
+        return
+
 
     def update(self, context, action, reward):
         sample = np.append(context, action, axis=1)
@@ -280,6 +313,30 @@ class NeuralUcbPolicy():
                 
                 loss.backward()
                 self.optimizer.step()
+    
+    def pretrain(self, history, logger):
+        self.model.train()
+        
+        new_shape = (history['context'].shape[0], self.n_features)
+        new = np.zeros(new_shape)
+        
+        for i in range(history['context'].shape[0]):
+            new[i] = self.__disjoint_context(history['context'][i], np.where(history['action'][i] == 1)[0][0])
+        
+        history['context'] = torch.from_numpy(new).float()
+        history['reward'] = torch.from_numpy(history['reward']).float()
+        
+        for _ in range(self.epochs):
+            for context, reward in chunks2(history['context'], history['reward'], self.batch_size):
+                self.optimizer.zero_grad()
+                pred = self.model(context)
+                loss = self.criterion(pred.squeeze(), reward)
+
+                logger.log({"train/loss" : loss})
+                loss.backward()
+                self.optimizer.step()
+            self.scheduler.step()
+        return
 
 
     def approx_grad(self, disjoint_context):

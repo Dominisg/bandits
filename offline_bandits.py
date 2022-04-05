@@ -10,6 +10,8 @@ def get_offline_bandit(method, log):
         return InversePropensityScoreOfflineBandit(log)
     if method == 'dr':
         return DoublyRobustOfflineBandit(log)
+    if method == 'replay':
+        return ReplyOfflineBandit(log)
 
 class DirectOfflineBandit(Bandit):
     def __init__(self, log):
@@ -91,3 +93,24 @@ class DoublyRobustOfflineBandit(InversePropensityScoreOfflineBandit, DirectOffli
         ra_est = self.regr.predict(np.concatenate([contexts, real_actions], axis=1))
         dm_reward = self.regr.predict(np.concatenate([contexts, actions], axis=1))
         return  (((real_rewards - ra_est) * (np.array_equal(actions, real_actions))  / max(np.sum(est * actions), 0.001)) + dm_reward)
+
+class ReplyOfflineBandit():
+    def __init__(self, log):
+        df = pd.read_csv(log)
+        headers = list(df.columns.values)
+        to_remove = [str for str in headers if 'ctx' not in str]
+        action_headers = [str for str in headers if 'action' in str]
+        
+        self.K = len(action_headers)
+        self.actions = df[action_headers]
+        self.rewards = df['reward']
+        self.x = df.drop(to_remove, axis=1)
+
+    def context_size(self):
+        return self.x.shape[1] 
+   
+    def arms_count(self):
+        return self.K
+    
+    def get_dataset(self):
+        return {'context': self.x.to_numpy(), 'action': self.actions.to_numpy(), 'reward': self.rewards.to_numpy()}

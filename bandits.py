@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
 
-def get_bandit(dataset):
+def get_bandit(dataset, test=False):
     if dataset == 'mushroom':
         return MushroomBandit()
     if dataset == 'ecoli':
         return ColiBandit()
+    if dataset == 'mnist':
+        return MnistBandit(test) 
     return None
 
 class Bandit: 
@@ -47,7 +49,7 @@ class Bandit:
 class MushroomBandit(Bandit):
     def __init__(self):
         super().__init__()
-        df = pd.read_csv('./shuffled-mushrooms.csv')
+        df = pd.read_csv('data/shuffled-mushrooms.csv')
         df = pd.get_dummies(df)
         df = df.sample(frac=1).reset_index(drop=True)
         self.y = df["Class_poisonous"]
@@ -71,32 +73,31 @@ class MushroomBandit(Bandit):
     def arms_count(self):
         return 2 
 
-class MushroomBandit(Bandit):
-    def __init__(self):
+class MnistBandit(Bandit):
+    def __init__(self, test):
         super().__init__()
-        df = pd.read_csv('data/shuffled-mushrooms.csv')
-        df = pd.get_dummies(df)
+        df = pd.read_csv('data/mnist.csv')
         df = df.sample(frac=1).reset_index(drop=True)
-        self.y = df["Class_poisonous"]
-        self.x = df.drop(["Class_poisonous", "Class_edible"], axis=1)
+        if test:
+            df = df.head(4096)
+        self.y = pd.get_dummies(df["label"])
+        self.x = df.drop(["label"], axis=1)
+        self.x /= 255.
+        print(self.x.head())
         
-        self.oracle = np.vectorize(MushroomBandit._oracle)
-        self.reward = np.vectorize(MushroomBandit._reward, signature='(n),()->()')
+        self.oracle = np.vectorize(MnistBandit._oracle, signature='(m)->()', )
+        self.reward = np.vectorize(MnistBandit._reward, signature='(n),(m)->()')
     
     def _oracle(poisonous):
-        if poisonous == 1:
-            return 0.
-        return 5.
+        return 1
 
-    def _reward(action, poisonous):
-        if action[0] == 1 and poisonous == 1 and np.random.binomial(1, 0.5) == 1:
-            return -35.
-        if action[1] == 1:
-            return 0
-        return 5.
+    def _reward(action, target):
+        if np.array_equal(action, target):
+            return 1.
+        return 0.
 
     def arms_count(self):
-        return 2
+        return 10
 
 class ColiBandit(Bandit):
     def __init__(self):
