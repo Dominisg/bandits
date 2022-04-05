@@ -4,7 +4,7 @@ from logger import HistoryLogger, get_logger
 from bandits import get_bandit
 from utils import get_config_for_dataset
 
-policies = ['bayes_by_backprob']
+policies = ['random', 'greedy', 'epsilon_greedy', 'bayes_by_backprob', 'lin_ucb', 'neural_ucb']
 parser = argparse.ArgumentParser(description='Train CMAB policy on selected dataset')
 parser.add_argument('dataset', type=str, choices=['mushroom', 'ecoli', 'mnist'], help='Dataset name')
 args = parser.parse_args()
