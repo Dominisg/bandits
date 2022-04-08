@@ -28,7 +28,7 @@ class Bandit:
         last = self.idx + batch_size 
         if  last >= len(self.x):
             last = len(self.x) - 1
-        return np.array(self.x[self.idx : last], dtype=np.float)
+        return np.array(self.x[self.idx : last], dtype=np.float32)
 
     def context_size(self):
         return self.x[self.idx : self.idx + 1].shape[1]
@@ -38,7 +38,7 @@ class Bandit:
         if last > len(self.x):
             last = len(self.x)
 
-        targets = np.array(self.y[self.idx : last], dtype=np.float)
+        targets = np.array(self.y[self.idx : last], dtype=np.float32)
 
         reward = self.reward(actions, targets)
         oracle = self.oracle(targets)

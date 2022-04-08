@@ -113,4 +113,4 @@ class ReplyOfflineBandit():
         return self.K
     
     def get_dataset(self):
-        return {'context': self.x.to_numpy(), 'action': self.actions.to_numpy(), 'reward': self.rewards.to_numpy()}
+        return {'context': self.x.to_numpy(dtype=np.float32), 'action': self.actions.to_numpy(dtype=np.float32), 'reward': self.rewards.to_numpy(dtype=np.float32)}

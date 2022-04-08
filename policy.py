@@ -1,3 +1,4 @@
+from cmath import inf
 import torch.nn as nn
 import torch
 import torchbnn
@@ -56,6 +57,9 @@ class EpsilonPerceptron():
     def __init__(self, K_arms, context_size, epsilon, learning_rate, weight_decay, batch_size, hidden_size, bayes = False, kl_weight = 0.001, train_every = 100, epochs = 1, lr_gamma=1.0):
         self.model = Perceptron(context_size + K_arms, hidden_size)
         self.kl_loss = None
+        self.lr_gamma = lr_gamma
+        self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
         if bayes:
             transform_model(self.model, nn.Linear, torchbnn.BayesLinear, 
             args={"prior_mu":0, "prior_sigma":0.001, "in_features" : ".in_features",
@@ -77,6 +81,10 @@ class EpsilonPerceptron():
         self.train_every = train_every
         self.epochs = epochs
         self.iter = 0
+    
+    def reset(self):
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr = self.learning_rate, weight_decay=self.weight_decay)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, self.lr_gamma)
 
     def get_name(self):
         if self.kl_loss:
@@ -86,9 +94,9 @@ class EpsilonPerceptron():
 
     def get_action(self, context):
         if np.random.binomial(1, self.epsilon) == 1:
-            return np.eye(self.K_arms)[np.random.choice(self.K_arms,1)]
+            return np.eye(self.K_arms, dtype=np.float32)[np.random.choice(self.K_arms,1)]
 
-        possible_actions = np.eye(self.K_arms)
+        possible_actions = np.eye(self.K_arms, dtype=np.float32)
         inputs = []   
         for action in possible_actions:
             inputs.append(np.append(context, [action], axis=1))
@@ -192,11 +200,11 @@ class LinUcbDisjointArm():
         
         # A: (d x d) matrix = D_a.T * D_a + I_d. 
         # The inverse of A is used in ridge regression 
-        self.A = np.identity(d)
+        self.A = np.identity(d, dtype=np.float32)
         
         # b: (d x 1) corresponding response vector. 
         # Equals to D_a.T * c_a in ridge regression formulation
-        self.b = np.zeros([d,1])
+        self.b = np.zeros([d,1], dtype=np.float32)
         
     def calc_UCB(self, x_array):
         # Find A inverse for ridge regression
@@ -252,7 +260,7 @@ class LinUcbPolicy():
         # Choose based on candidate_arms randomly (tie breaker)
         choosen_arm = np.random.choice(candidate_arms)
 
-        action = np.zeros(self.K_arms)
+        action = np.zeros(self.K_arms, dtype=np.float32)
         action[choosen_arm] = 1.
 
         return [action]
@@ -267,14 +275,18 @@ class LinUcbPolicy():
 
 class NeuralUcbPolicy():
     def __init__(self, K_arms, context_size, alpha, learning_rate, weight_decay, batch_size, epochs = 1,
-                 replay_buffer_size = 4096, train_every = 100, reg_factor = 1.0, hidden_size = 20, lr_gamma = 1.0):
+                 replay_buffer_size = 4096, train_every = 100, reg_factor = 1.0, hidden_size = 20, lr_gamma = 1.0, device = 'cpu'):
         self.K_arms = K_arms
         self.n_features = context_size * K_arms
-        self.model = Perceptron(self.n_features, hidden_size)
+        self.model = Perceptron(self.n_features, hidden_size).to(device)
         self.hidden_size = hidden_size
+        self.lr_gamma = lr_gamma
+        self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.device = device
 
         self.reg_factor = reg_factor
-        self.diag_Z = torch.from_numpy(np.ones(self.approximator_dim))/self.reg_factor
+        self.diag_Z = torch.from_numpy(np.ones(self.approximator_dim, dtype=np.float32)).to(device)/self.reg_factor
 
         self.criterion = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr = learning_rate, weight_decay=weight_decay)
@@ -287,14 +299,19 @@ class NeuralUcbPolicy():
         self.iter = 0
         self.train_every = train_every
 
+    def reset(self):
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr = self.learning_rate, weight_decay=self.weight_decay)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, self.lr_gamma)
+
+
     def __disjoint_context(self, context, arm):
         l = context.shape[-1]
         if l == self.n_features:
             return context
         
-        ctx = np.zeros(self.n_features)
+        ctx = torch.zeros(self.n_features).to(self.device)
         ctx[l * arm : l * (arm + 1)] = context
-        return torch.from_numpy(ctx).float()
+        return ctx.float()
 
     def train(self):
         self.replay_buffer = self.replay_buffer[-self.replay_buffer_size:]
@@ -329,8 +346,8 @@ class NeuralUcbPolicy():
         for _ in range(self.epochs):
             for context, reward in chunks2(history['context'], history['reward'], self.batch_size):
                 self.optimizer.zero_grad()
-                pred = self.model(context)
-                loss = self.criterion(pred.squeeze(), reward)
+                pred = self.model(context.to(self.device))
+                loss = self.criterion(pred.squeeze(), reward.to(self.device()))
 
                 logger.log({"train/loss" : loss})
                 loss.backward()
@@ -377,7 +394,7 @@ class NeuralUcbPolicy():
         return sum(w.numel() for w in self.model.parameters() if w.requires_grad)
 
     def get_action(self, context):
-        highest_ucb = -1
+        highest_ucb = -inf
         
         candidate_arms = []
         
@@ -385,7 +402,7 @@ class NeuralUcbPolicy():
             disjoint_context = self.__disjoint_context(context[0], arm_index)
             grad = self.approx_grad(disjoint_context)
             self.model.eval()
-            arm_ucb = self.model.forward(disjoint_context) + self.alpha * np.sqrt(np.dot(grad, self.diag_Z_inv * grad.T))
+            arm_ucb = self.model.forward(disjoint_context) + self.alpha * torch.sqrt(torch.dot(grad, self.diag_Z_inv * grad.T))
             if arm_ucb > highest_ucb:
                 highest_ucb = arm_ucb
                 candidate_arms = [arm_index]
