@@ -331,7 +331,7 @@ class NeuralUcbPolicy():
                 loss.backward()
                 self.optimizer.step()
     
-    def pretrain(self, history, logger):
+    def pretrain(self, history, logger, pretrain_ucb = False):
         self.model.train()
         
         new_shape = (history['context'].shape[0], self.n_features)
@@ -352,6 +352,10 @@ class NeuralUcbPolicy():
                 logger.log({"train/loss" : loss})
                 loss.backward()
                 self.optimizer.step()
+                if (pretrain_ucb):
+                    for c in context:
+                        self.update_Z(c)
+
             self.scheduler.step()
         return
 

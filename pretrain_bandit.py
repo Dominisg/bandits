@@ -12,11 +12,7 @@ args = parser.parse_args()
 
 history_logs = get_history_logs_for_dataset(args.dataset)
 for p in policies:
-    i = 0
     for log in history_logs:
-        i+=1
-        if i < 27:
-            continue
         reply_bandit = ReplyOfflineBandit(log['filename'])
         logger = get_logger("wandb", p + " H:" + log['offline_policy'], project_name=args.dataset + '|test')
         config = get_config_for_dataset(p, args.dataset)
@@ -32,7 +28,7 @@ for p in policies:
 
         policy.reset()
         bandit = get_bandit(args.dataset)
-        logger = get_logger("wandb", policy.get_name(), args.dataset + '|compare_pretrained')
+        logger = get_logger("wandb", policy.get_name(), args.dataset + '|test')
         logger.log_config(config)
         regret_sum = 0
         for _ in range(50000):
