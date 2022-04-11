@@ -307,10 +307,10 @@ class NeuralUcbPolicy():
     def __disjoint_context(self, context, arm):
         l = context.shape[-1]
         if l == self.n_features:
-            return context
+            return torch.from_numpy(context).float()
         
         ctx = torch.zeros(self.n_features).to(self.device)
-        ctx[l * arm : l * (arm + 1)] = context
+        ctx[l * arm : l * (arm + 1)] = torch.from_numpy(context)
         return ctx.float()
 
     def train(self):
@@ -330,6 +330,7 @@ class NeuralUcbPolicy():
                 
                 loss.backward()
                 self.optimizer.step()
+            self.scheduler.step()
     
     def pretrain(self, history, logger, pretrain_ucb = False):
         self.model.train()
@@ -347,7 +348,7 @@ class NeuralUcbPolicy():
             for context, reward in chunks2(history['context'], history['reward'], self.batch_size):
                 self.optimizer.zero_grad()
                 pred = self.model(context.to(self.device))
-                loss = self.criterion(pred.squeeze(), reward.to(self.device()))
+                loss = self.criterion(pred.squeeze(), reward.to(self.device))
 
                 logger.log({"train/loss" : loss})
                 loss.backward()
