@@ -76,10 +76,13 @@ class MushroomBandit(Bandit):
 class MnistBandit(Bandit):
     def __init__(self, test):
         super().__init__()
-        df = pd.read_csv('data/mnist.csv')
-        df = df.sample(frac=1).reset_index(drop=True)
+        
         if test:
-            df = df.head(4096)
+            df = pd.read_csv('data/mnist_test.csv')
+        else:
+            df = pd.read_csv('data/mnist.csv')
+        df = df.sample(frac=1).reset_index(drop=True)
+        
         self.y = pd.get_dummies(df["label"])
         self.x = df.drop(["label"], axis=1)
         self.x /= 255.

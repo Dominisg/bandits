@@ -129,7 +129,7 @@ class EpsilonPerceptron():
                 batch_context = batch[:, :-1]
                 batch_target = batch[:, -1]
                 pred = self.model(batch_context.float())
-                loss = self.criterion(pred.squeeze(), batch_target.float())
+                loss = self.criterion(pred.squeeze(), batch_target.squeeze().float())
                 if self.kl_loss is not None:
                     kl = self.kl_loss(self.model)
                     loss = loss + self.kl_weight*kl
