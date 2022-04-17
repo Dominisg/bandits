@@ -2,5 +2,5 @@ epsilon: 0.0
 learning_rate: 0.001
 batch_size: 64
 hidden_size: 100
-weight_decay: 0.0001
-lr_gamma: 0.90
+weight_decay: 0.00001
+lr_gamma: 0.9

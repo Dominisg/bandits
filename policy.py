@@ -71,7 +71,7 @@ class EpsilonPerceptron():
             self.kl_weight = kl_weight
         else:
             self.model.apply(init_weights)
-
+        
         self.model.to(device)
 
         self.criterion = torch.nn.MSELoss()
@@ -106,7 +106,7 @@ class EpsilonPerceptron():
 
         estimated_rewards = []
         self.model.eval()
-        for input in inputs:
+        for input in inputs: 
             sample_reward = self.model(torch.tensor(input).to(self.device).float())
 
             if self.kl_loss:
@@ -129,7 +129,7 @@ class EpsilonPerceptron():
                 batch_context = batch[:, :-1]
                 batch_target = batch[:, -1]
                 pred = self.model(batch_context.float())
-                loss = self.criterion(pred.squeeze(), batch_target.float())
+                loss = self.criterion(pred.squeeze(), batch_target.squeeze().float())
                 if self.kl_loss is not None:
                     kl = self.kl_loss(self.model)
                     loss = loss + self.kl_weight*kl
@@ -151,7 +151,7 @@ class EpsilonPerceptron():
                 self.optimizer.zero_grad()
                 batch_context = torch.cat([context, action], 1) 
                 pred = self.model(batch_context)
-                loss = self.criterion(pred.squeeze(), reward)
+                loss = self.criterion(pred.squeeze(), reward.squeeze())
                 if self.kl_loss is not None:
                     kl = self.kl_loss(self.model)
                     loss = loss + self.kl_weight*kl
@@ -332,7 +332,7 @@ class NeuralUcbPolicy():
                 batch_target = batch[:, -1]
 
                 pred = self.model(batch_context.float())
-                loss = self.criterion(pred.squeeze(), batch_target.float())
+                loss = self.criterion(pred.squeeze(), batch_target.squeeze().float())
                 
                 loss.backward()
                 self.optimizer.step()
@@ -354,7 +354,7 @@ class NeuralUcbPolicy():
             for context, reward in chunks2(history['context'], history['reward'], self.batch_size):
                 self.optimizer.zero_grad()
                 pred = self.model(context.to(self.device))
-                loss = self.criterion(pred.squeeze(), reward.to(self.device))
+                loss = self.criterion(pred.squeeze(), reward.squeeze().to(self.device))
 
                 logger.log({"train/loss" : loss})
                 loss.backward()
