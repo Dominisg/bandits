@@ -5,6 +5,7 @@ import torchbnn
 from torchhk import transform_model
 import random
 import numpy as np
+from yaml import load
 
 def get_policy(name, K_arms, context_size, args):
     if name == 'random':
@@ -133,7 +134,7 @@ class EpsilonPerceptron():
                 if self.kl_loss is not None:
                     kl = self.kl_loss(self.model)
                     loss = loss + self.kl_weight*kl
-            
+
                 loss.backward()
                 self.optimizer.step()
             self.scheduler.step()
@@ -141,13 +142,22 @@ class EpsilonPerceptron():
         return
 
     def pretrain(self, history, logger):
-        self.model.train()
         bs = self.batch_size
         for k, v in history.items():
             history[k] = torch.from_numpy(v).float().to(self.device)
+        
+        test_size = history['context'].shape[0] // 10
+        last_loss = 1000
+        min_loss = 0
+        patience = 2
+        trigger_times = 0
 
-        for _ in range(self.epochs):
-            for context, action, reward in chunks3(history['context'], history['action'], history['reward'], bs):
+        for epoch in range(100):
+            train_loss = 0
+            train_step = 0
+
+            self.model.train()
+            for context, action, reward in chunks3(history['context'][test_size:], history['action'][test_size:], history['reward'][test_size:], bs):
                 self.optimizer.zero_grad()
                 batch_context = torch.cat([context, action], 1) 
                 pred = self.model(batch_context)
@@ -155,11 +165,34 @@ class EpsilonPerceptron():
                 if self.kl_loss is not None:
                     kl = self.kl_loss(self.model)
                     loss = loss + self.kl_weight*kl
+                
+                train_loss += loss
+                train_step += 1
 
-                logger.log({"train/loss" : loss})
+                logger.log({"train/step_loss" : loss})
                 loss.backward()
                 self.optimizer.step()
-            self.scheduler.step()
+            
+            self.model.eval()
+            batch_context = torch.cat([history['context'][:test_size], history['action'][:test_size]], 1) 
+            loss = self.criterion(self.model(batch_context).squeeze(), history['reward'][:test_size].squeeze())
+            logger.log({"train/loss" : train_loss / train_step, 'epoch' : epoch})
+            logger.log({"eval/loss" : loss, 'epoch':epoch})
+ 
+            if loss > last_loss:
+                trigger_times += 1
+                if trigger_times >= patience:
+                    print(f"Early stopped in epoch {epoch} !\n")
+                    self.model = torch.load("/tmp/bandit.cpt")
+                    return 
+            else:
+                trigger_times = 0
+            
+            if loss < min_loss:
+                torch.save(self.model, "/tmp/bandit.cpt")
+                min_loss = loss
+
+            last_loss = loss
         return
 
 
@@ -337,37 +370,66 @@ class NeuralUcbPolicy():
                 loss.backward()
                 self.optimizer.step()
             self.scheduler.step()
-    
+
     def pretrain(self, history, logger, pretrain_ucb = False):
-        self.model.train()
-        
+        test_size = history['context'].shape[0] // 10
         history['action'] = torch.from_numpy(history['action']).float().to(self.device)
         history['reward'] = torch.from_numpy(history['reward']).float().to(self.device)
         
         new_shape = (history['context'].shape[0], self.n_features)
         new = torch.zeros(new_shape)
-        
         for i in range(history['context'].shape[0]):
             new[i] = self.__disjoint_context(history['context'][i], torch.where(history['action'][i] == 1)[0][0])
-
         history['context'] = new.to(self.device)
+        last_loss = 1000
+        min_loss = 1000
+        patience = 2
+        trigger_times = 0
 
-        for _ in range(self.epochs):
-            for context, reward in chunks2(history['context'], history['reward'], self.batch_size):
+        for epoch in range (100):
+            train_loss = 0
+            train_step = 0
+
+            self.model.train()
+            for context, reward in chunks2(history['context'][test_size:], history['reward'][test_size:], self.batch_size):
                 self.optimizer.zero_grad()
                 pred = self.model(context)
                 loss = self.criterion(pred.squeeze(), reward.squeeze())
+                train_loss += loss
+                train_step += 1
 
-                logger.log({"train/loss" : loss})
+                logger.log({"train/step_loss" : loss})
+
                 loss.backward()
                 self.optimizer.step()
                 if (pretrain_ucb):
                     for c in context:
                         self.update_Z(c)
+ 
+            self.model.eval()
+            loss = self.criterion(self.model(history['context'][:test_size]).squeeze(), history['reward'][:test_size].squeeze())
+            logger.log({"train/loss" : train_loss / train_step, 'epoch': epoch})
+            logger.log({"eval/loss": loss, 'epoch': epoch,
+            })
+ 
+            if loss > last_loss:
+                trigger_times += 1
+                if trigger_times >= patience:
+                    print(f"Early stopped in epoch {epoch} !\n")
+                    self.model = torch.load("/tmp/bandit.cpt")
+                    self.model.eval()
+                    loss = self.criterion(self.model(history['context'][:test_size]).squeeze(), history['reward'][:test_size].squeeze())
+                    print(f"Eval!\n", loss)
 
-            self.scheduler.step()
+            else:
+                trigger_times = 0
+
+            if loss < min_loss:
+                torch.save(self.model, "/tmp/bandit.cpt")
+                min_loss = loss
+            
+            last_loss = loss 
         return
-
 
     def approx_grad(self, disjoint_context):
         self.model.zero_grad()

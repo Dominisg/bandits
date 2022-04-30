@@ -97,10 +97,12 @@ class DoublyRobustOfflineBandit(InversePropensityScoreOfflineBandit, DirectOffli
 class ReplyOfflineBandit():
     def __init__(self, log):
         df = pd.read_csv(log)
+        df = df.sample(frac=1).reset_index(drop=True)
+
         headers = list(df.columns.values)
         to_remove = [str for str in headers if 'ctx' not in str]
         action_headers = [str for str in headers if 'action' in str]
-        
+
         self.K = len(action_headers)
         self.actions = df[action_headers]
         self.rewards = df['reward']
@@ -111,6 +113,6 @@ class ReplyOfflineBandit():
    
     def arms_count(self):
         return self.K
-    
+
     def get_dataset(self):
         return {'context': self.x.to_numpy(dtype=np.float32), 'action': self.actions.to_numpy(dtype=np.float32), 'reward': self.rewards.to_numpy(dtype=np.float32)}
