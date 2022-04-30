@@ -2,13 +2,13 @@ from policy import get_policy
 from bandits import get_bandit
 from logger import get_logger
 
-policies = ['neural_ucb']
-learning_rate = [0.0001]
-lr_gamma = [0.98, 0.90]
-weight_decay = [0.0001]
-kl_weight = [0.0001, 0.00001]
-alpha = [0.1]
-lin_alpha = [0.1, 0.3, 1, 10]
+policies = ['bayes_by_backprob']
+learning_rate = [0.01, 0.001, 0.0001]
+lr_gamma = [1, 0.98, 0.90]
+weight_decay = [0.001, 0.0001, 0.00001]
+kl_weight = [0.000001]
+alpha = [0.01, 0.1, 1]
+lin_alpha = [0.01]
 trials = 1
 
 for p in policies:
@@ -61,9 +61,9 @@ for p in policies:
                             })
                             
     for config in configs:
-        bandit = get_bandit('mnist')
+        bandit = get_bandit('shuttle')
         policy = get_policy(p, bandit.arms_count(), bandit.context_size(), config) 
-        logger = get_logger("wandb", policy.get_name(), 'mnist_grid_search')
+        logger = get_logger("wandb", policy.get_name(), 'shuttle|grid_search')
         config['policy'] = p
         logger.log_config(config)
 

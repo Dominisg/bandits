@@ -34,7 +34,7 @@ class WandbLogger(Logger):
         wandb.log(dict)
 
     def finish(self):
-        wandb.finish()
+        wandb.run.finish()
 
 class NeptuneLogger(Logger):
     def __init__(self, project_name):
