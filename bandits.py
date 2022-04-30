@@ -8,6 +8,8 @@ def get_bandit(dataset, test=False):
         return ColiBandit()
     if dataset == 'mnist':
         return MnistBandit(test) 
+    if dataset == 'shuttle':
+        return ShuttleBandit(test)
     return None
 
 class Bandit: 
@@ -125,6 +127,36 @@ class ColiBandit(Bandit):
     
     def _oracle(target):
         return 1.
+
+    def _reward(action, target):
+        if np.array_equal(action, target):
+            return 1.
+        return 0.
+
+    def arms_count(self):
+        return self.K_arms
+
+class ShuttleBandit(Bandit):
+    def __init__(self, test):
+        super().__init__()
+        
+        if test:
+            df = pd.read_csv('data/shuttle.tst', header=None, delimiter=' ')
+        else:
+            df = pd.read_csv('data/shuttle.trn', header=None, delimiter=' ')
+        df = df.sample(frac=1).reset_index(drop=True)
+        
+        self.y = pd.get_dummies(df.iloc[: , -1])
+        self.x = df.iloc[: , :-1]
+        self.x = (self.x-self.x.mean())/self.x.std()
+
+        self.K_arms = self.y.shape[1]
+        
+        self.oracle = np.vectorize(MnistBandit._oracle, signature='(m)->()', )
+        self.reward = np.vectorize(MnistBandit._reward, signature='(n),(m)->()')
+    
+    def _oracle(poisonous):
+        return 1
 
     def _reward(action, target):
         if np.array_equal(action, target):

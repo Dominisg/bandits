@@ -144,7 +144,7 @@ class EpsilonPerceptron():
         self.model.train()
         bs = self.batch_size
         for k, v in history.items():
-            history[k] = torch.from_numpy(v).float()
+            history[k] = torch.from_numpy(v).float().to(self.device)
 
         for _ in range(self.epochs):
             for context, action, reward in chunks3(history['context'], history['action'], history['reward'], bs):
@@ -341,20 +341,22 @@ class NeuralUcbPolicy():
     def pretrain(self, history, logger, pretrain_ucb = False):
         self.model.train()
         
+        history['action'] = torch.from_numpy(history['action']).float().to(self.device)
+        history['reward'] = torch.from_numpy(history['reward']).float().to(self.device)
+        
         new_shape = (history['context'].shape[0], self.n_features)
-        new = np.zeros(new_shape)
+        new = torch.zeros(new_shape)
         
         for i in range(history['context'].shape[0]):
-            new[i] = self.__disjoint_context(history['context'][i], np.where(history['action'][i] == 1)[0][0])
-        
-        history['context'] = torch.from_numpy(new).float()
-        history['reward'] = torch.from_numpy(history['reward']).float()
-        
+            new[i] = self.__disjoint_context(history['context'][i], torch.where(history['action'][i] == 1)[0][0])
+
+        history['context'] = new.to(self.device)
+
         for _ in range(self.epochs):
             for context, reward in chunks2(history['context'], history['reward'], self.batch_size):
                 self.optimizer.zero_grad()
-                pred = self.model(context.to(self.device))
-                loss = self.criterion(pred.squeeze(), reward.squeeze().to(self.device))
+                pred = self.model(context)
+                loss = self.criterion(pred.squeeze(), reward.squeeze())
 
                 logger.log({"train/loss" : loss})
                 loss.backward()
