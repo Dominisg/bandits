@@ -148,7 +148,7 @@ class EpsilonPerceptron():
         
         test_size = history['context'].shape[0] // 10
         last_loss = 1000
-        min_loss = 0
+        min_loss = 1000
         patience = 2
         trigger_times = 0
 
@@ -418,8 +418,6 @@ class NeuralUcbPolicy():
                     print(f"Early stopped in epoch {epoch} !\n")
                     self.model = torch.load("/tmp/bandit.cpt")
                     self.model.eval()
-                    loss = self.criterion(self.model(history['context'][:test_size]).squeeze(), history['reward'][:test_size].squeeze())
-                    print(f"Eval!\n", loss)
 
             else:
                 trigger_times = 0
