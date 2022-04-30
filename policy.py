@@ -149,7 +149,7 @@ class EpsilonPerceptron():
         test_size = history['context'].shape[0] // 10
         last_loss = 1000
         min_loss = 1000
-        patience = 2
+        patience = 5
         trigger_times = 0
 
         for epoch in range(100):
@@ -383,7 +383,7 @@ class NeuralUcbPolicy():
         history['context'] = new.to(self.device)
         last_loss = 1000
         min_loss = 1000
-        patience = 2
+        patience = 5
         trigger_times = 0
 
         for epoch in range (100):

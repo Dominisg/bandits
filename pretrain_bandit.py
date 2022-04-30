@@ -11,6 +11,7 @@ def pretrain_policy(p, history_logs, dataset, pretrain_ucb):
         reply_bandit = ReplyOfflineBandit(log['filename'])
         logger = get_logger("wandb", p + " H:" + log['offline_policy'], project_name=dataset + '|pretrain_early_stop')
         config = get_config_for_dataset(p, dataset)
+        config['device'] = 'cuda'
         policy = get_policy(p, reply_bandit.arms_count(), reply_bandit.context_size(), config)
         
         config['policy'] = policy.get_name()
