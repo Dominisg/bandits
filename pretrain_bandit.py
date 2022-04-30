@@ -37,6 +37,8 @@ def pretrain_policy(p, history_logs, dataset, pretrain_ucb):
             regret_sum += regret
             policy.update(context, action, reward)
             logger.log({ "regret": regret_sum })
+        
+        logger.finish()
 
 if __name__ == '__main__':
     policies = ['greedy', 'bayes_by_backprob', 'neural_ucb', 'neural_ucb_pretrained']
