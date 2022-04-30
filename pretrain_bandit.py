@@ -24,7 +24,7 @@ def pretrain_policy(p, history_logs, dataset, pretrain_ucb):
             policy.pretrain(history, logger, True)
         else:
             policy.pretrain(history, logger)
-        del logger
+        logger.finish()
 
         bandit = get_bandit(dataset, True)
         logger = get_logger("wandb", policy.get_name(), dataset + '|eval_pretrained')

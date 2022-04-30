@@ -10,6 +10,9 @@ class Logger:
     
     def log():
         raise NotImplementedError
+    
+    def finish():
+        pass
 
 def get_logger(name, run_name, project_name = 'bandits'):
     if name == 'wandb':
@@ -30,8 +33,8 @@ class WandbLogger(Logger):
     def log(self, dict):
         wandb.log(dict)
 
-    def __del__(self):
-        wandb.run.finish()
+    def finish(self):
+        wandb.finish()
 
 class NeptuneLogger(Logger):
     def __init__(self, project_name):
