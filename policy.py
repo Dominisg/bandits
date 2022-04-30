@@ -147,7 +147,6 @@ class EpsilonPerceptron():
             history[k] = torch.from_numpy(v).float().to(self.device)
         
         test_size = history['context'].shape[0] // 10
-        last_loss = 1000
         min_loss = 1000
         patience = 5
         trigger_times = 0
@@ -179,20 +178,17 @@ class EpsilonPerceptron():
             logger.log({"train/loss" : train_loss / train_step, 'epoch' : epoch})
             logger.log({"eval/loss" : loss, 'epoch':epoch})
  
-            if loss > last_loss:
+            if loss > min_loss:
                 trigger_times += 1
                 if trigger_times >= patience:
                     print(f"Early stopped in epoch {epoch} !\n")
                     self.model = torch.load("/tmp/bandit.cpt")
                     return 
             else:
-                trigger_times = 0
-            
-            if loss < min_loss:
                 torch.save(self.model, "/tmp/bandit.cpt")
                 min_loss = loss
+                trigger_times = 0
 
-            last_loss = loss
         return
 
 
@@ -381,12 +377,11 @@ class NeuralUcbPolicy():
         for i in range(history['context'].shape[0]):
             new[i] = self.__disjoint_context(history['context'][i], torch.where(history['action'][i] == 1)[0][0])
         history['context'] = new.to(self.device)
-        last_loss = 1000
         min_loss = 1000
         patience = 5
         trigger_times = 0
 
-        for epoch in range (100):
+        for epoch in range(50):
             train_loss = 0
             train_step = 0
 
@@ -412,21 +407,17 @@ class NeuralUcbPolicy():
             logger.log({"eval/loss": loss, 'epoch': epoch,
             })
  
-            if loss > last_loss:
+            if loss >= min_loss:
                 trigger_times += 1
                 if trigger_times >= patience:
                     print(f"Early stopped in epoch {epoch} !\n")
                     self.model = torch.load("/tmp/bandit.cpt")
-                    self.model.eval()
-
+                    return 
             else:
-                trigger_times = 0
-
-            if loss < min_loss:
                 torch.save(self.model, "/tmp/bandit.cpt")
                 min_loss = loss
+                trigger_times = 0
             
-            last_loss = loss 
         return
 
     def approx_grad(self, disjoint_context):
