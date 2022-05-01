@@ -82,7 +82,7 @@ class MnistBandit(Bandit):
         if test:
             df = pd.read_csv('data/mnist_test.csv')
         else:
-            df = pd.read_csv('data/mnist.csv')
+            df = pd.read_csv('data/mnist_train.csv')
         df = df.sample(frac=1).reset_index(drop=True)
         
         self.y = pd.get_dummies(df["label"])
