@@ -16,7 +16,6 @@ def pretrain_policy(p, history_logs, dataset, pretrain_ucb):
         
         config['policy'] = policy.get_name()
         config['offline_policy'] = log['offline_policy']
-        logger.log_config(config)
         
         history = reply_bandit.get_dataset()
         if pretrain_ucb and 'neural_ucb' in config['policy']:
@@ -24,6 +23,7 @@ def pretrain_policy(p, history_logs, dataset, pretrain_ucb):
             logger.log_config(config)
             policy.pretrain(history, logger, True)
         else:
+            logger.log_config(config)
             policy.pretrain(history, logger)
         logger.finish()
 
