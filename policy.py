@@ -86,7 +86,10 @@ class EpsilonPerceptron():
         self.epochs = epochs
         self.iter = 0
     
-    def reset(self):
+    def reset(self, lr=None):
+        if lr != None:
+            self.learning_rate = lr
+
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr = self.learning_rate, weight_decay=self.weight_decay)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, self.lr_gamma)
 
@@ -333,7 +336,11 @@ class NeuralUcbPolicy():
         self.iter = 0
         self.train_every = train_every
 
-    def reset(self):
+    def reset(self, lr):
+        
+        if lr != None:
+            self.learning_rate = lr
+        
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr = self.learning_rate, weight_decay=self.weight_decay)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, self.lr_gamma)
 
